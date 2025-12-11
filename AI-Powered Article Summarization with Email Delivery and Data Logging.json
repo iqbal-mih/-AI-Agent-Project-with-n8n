@@ -1,0 +1,436 @@
+{
+  "name": "AI-Powered Article Summarization with Email Delivery and Data Logging",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-agent",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "7f110a43-d4ce-428a-a8d3-3c0cc73620cd",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -416,
+        48
+      ],
+      "webhookId": "89c0988f-5e96-4ccf-9cd9-dfc0377c3a7c"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an AI assistant who behaves like a friendly chatbot but is also a master at summarization.\nYou must always understand the user's intent and respond appropriately, guiding them toward summarization whenever it makes sense.\n\nUser Input:\n\n {{ $('Webhook Trigger').item.json.body.user_query }} {{ $json.chatInput }}\n\nBehavior Rules:\n1. First Message Requirement\n\nIf the user has not yet provided an email address, your first goal is to ask politely:\n\"Please enter your email address to continue.\"\n\nDo not summarize anything until the user provides an email.\n\n2. Chatbot Behavior (Casual Messages)\n\nIf the user sends casual, short, or non-task messages\n(e.g., “hi”, “hello”, “how are you”), respond conversationally and friendly.\n\n3. When User Provides Article Text or a URL\n\nIf the user provides:\n\nLong text (40+ words),\n\nAn article URL containing readable content,\n\nOr explicitly asks for a summary,\n\n→ Immediately summarize, without asking for permission.\n\n4. If User Is Unsure\n\nIf the user seems confused or asks how to use the system, gently guide them:\n\n“If you'd like a summary, you can paste the article text or share the URL.”\n\n5. Summarization Rules\n\nWhen summarizing:\n\nProvide a 3–5 sentence summary.\n\nProvide 3–5 key insights.\n\nKeep writing clean, natural, and easy to read.\n\n6. Required Actions for the Workflow\n\nAfter generating the summary & insights:\n\nYou have two tools:\n1 'Send a message in Gmail' Send the summary and insights to the user's email\n\n2. Use ‘Append Row in Google Sheets’ with the following fields:\n\nSession ID\n\nArticle URL\n\nSummary\n\nInsights\n\nEmail\n\n7. Important Restrictions\n\nDo NOT output JSON.\n\nDo NOT mention anything about internal tools (Google Sheets, email, etc.).\n\nDo NOT ask the user for permission to summarize when long content is provided.\n\nDo NOT force summarization on short casual messages.\n\nOnce the email is collected, do NOT ask again.\n\nGoal\n\nProvide a smooth experience:\n\nChat normally for normal chats.\n\nSummarize immediately when the user provides article-like content.\n\nAlways ensure the email is collected before summarization.\n\nOutput only natural language.\n\n\n",
+        "options": {
+          "systemMessage": "You are an AI assistant that summarizes articles and extracts key insights.\n\nYour task is to:\n1. Read the provided article content or user input\n2. If it is an article (40+ words), create a concise summary in 3-5 sentences\n3. Extract 3-5 key insights as bullet points\n4. If the input is conversational (short message), respond conversationally\n\nYou will output structured JSON with two fields:\n- summary: A concise summary of the article (or conversational response)\n- insights: An array of 3-5 key insights (or empty array for conversational input)"
+        }
+      },
+      "id": "41a0ce08-d2b4-4022-b7d3-56d31c502611",
+      "name": "AI Agent - Summarize & Extract",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        192,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "Hi there! 👋\nMy name is Ultron who has expertise in summarization. How can I assist you today?",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -416,
+        304
+      ],
+      "id": "88d96651-10c8-4fef-8f4f-f710cf61d416",
+      "name": "When chat message received",
+      "webhookId": "7358c18c-9f68-4ce6-bb78-494655097b53",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.session_id }}{{ $json.sessionId }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        256,
+        352
+      ],
+      "id": "2b551d64-e20b-4085-ae85-4c7d88834aa6",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+        "emailType": "text",
+        "message": "={{ $fromAI('Message', ``, 'string') }}\n\n",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Mohammad Iqbal Hossain"
+        }
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        448,
+        352
+      ],
+      "id": "1b76e41d-aff3-4f26-a344-885620bac08c",
+      "name": "Send a message in Gmail",
+      "webhookId": "b8ce0ba3-32a1-4ef6-b41e-4c3832983d75",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6wZHKXFRRisp8mdn",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        80,
+        352
+      ],
+      "id": "a409b454-6f3b-4be0-b028-7a51798c8619",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Wie3uOqJPMKvr3cn",
+          "name": "Google Gemini(PaLM) Api account 12"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        624,
+        64
+      ],
+      "id": "a6de6c84-0e33-4655-aea7-1215bbcd647b",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Workflow Configuration').first().json.scraping_api_url }}\n{{ $json.body.user_query }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "id": "1cabc5d9-45c4-48e3-81d1-73233a891d39",
+      "name": "Scrape Article Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        48
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "scraping_api_url",
+              "value": "<__PLACEHOLDER_VALUE__Firecrawl or scraping API endpoint URL__>",
+              "type": "string"
+            },
+            {
+              "id": "1ef1e342-8ff9-4730-8b74-3f75ded11fb9",
+              "name": "body.user_query",
+              "value": "={{ $json.body.user_query }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "d103ce6c-980f-4f05-a3a2-3dbc51454ac1",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -224,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1dSaBX-riwCHahXm727dddQtKygmR1Qc-v1fK8MM7Wtk",
+          "mode": "list",
+          "cachedResultName": "n8n AI summarrizer Agent sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSaBX-riwCHahXm727dddQtKygmR1Qc-v1fK8MM7Wtk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSaBX-riwCHahXm727dddQtKygmR1Qc-v1fK8MM7Wtk/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('session_id', ``, 'string') }}",
+            "email": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('email', ``, 'string') }}",
+            "article_url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('article_url', ``, 'string') }}",
+            "summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('summary', ``, 'string') }}",
+            "insights": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('insights', ``, 'string') }}",
+            "timestamp": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('timestamp', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "article_url",
+              "displayName": "article_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "insights",
+              "displayName": "insights",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        704,
+        320
+      ],
+      "id": "589f8755-c8a6-4b1c-9cc1-d7c2223d0d2c",
+      "name": "Append Row in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Ut7VXclwsedZT7Dl",
+          "name": "Google Sheets account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook Trigger": [
+      {
+        "json": {
+          "headers": {
+            "host": "iqbalmih.app.n8n.cloud",
+            "user-agent": "python-httpx/0.25.1",
+            "content-length": "2445",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "103.169.209.138",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "BD",
+            "cf-ray": "9abe091a2713fd6c-SIN",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "x-forwarded-for": "103.169.209.138, 172.70.208.113",
+            "x-forwarded-host": "iqbalmih.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-92-7c777649cb-zm9v6",
+            "x-is-trusted": "yes",
+            "x-real-ip": "103.169.209.138"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "user_query": "Dhaka (/ˈdɑːkə/ DAH-kə or /ˈdækə/ DAK-ə; Bengali: ঢাকা, romanized: Ḍhākā, pronounced [ˈɖʱaka] ⓘ), formerly spelled as Dacca,[21] is the capital and largest city of Bangladesh. With an estimated population of 36.6 million, Dhaka is the second largest city by population in the world,[12][22] and is widely considered to be the most densely populated built-up urban area in the world.[23][24] Dhaka is an important cultural, economic, and scientific hub of Eastern South Asia. Dhaka ranks fourth in South Asia and 55th in the world in terms of GDP. Lying on the Ganges Delta, it is bounded by the Buriganga, Turag, Dhaleshwari and Shitalakshya rivers. It is also the largest Bengali-speaking city in the world.\n\nThe area of Dhaka has been inhabited since the first millennium. An early modern city developed from the 17th century as a provincial capital and commercial centre of the Mughal Empire. Dhaka was the capital of a proto-industrialized Mughal Bengal for 75 years (1608–39 and 1660–1704). It was the hub of the muslin trade in Bengal and one of the most prosperous cities in the world. The Mughal city was named Jahangirnagar (The City of Jahangir) in honour of the erstwhile ruling emperor Jahangir.[25][26][27] The city's wealthy Mughal elite included princes and the sons of Mughal emperors. The pre-colonial city's glory peaked in the 17th and 18th centuries, when it was home to merchants from across Eurasia. The Port of Dhaka was a major trading hub for both riverine and maritime commerce. The Mughals decorated the city with well-laid gardens, tombs, mosques, palaces, and forts. The city was once called the Venice of the East.[28]\n\nUnder British rule, the city saw the introduction of electricity, railways, cinemas, Western-style universities and colleges, and a modern water supply. It became an important administrative and educational centre in the British Raj, as the capital of Eastern Bengal and Assam province after 1905.[29] In 1947, after the end of British rule, the city became the administrative capital of East Pakistan. It was declared the legislative capital of Pakistan in 1962. In 1971, following the Liberation War, it became the capital of an independent Bangladesh. In 2008, Dhaka celebrated 400 years as a municipal city.[30][31][32]",
+            "session_id": "8gyq8wdjzlt0t4kup5i905"
+          },
+          "webhookUrl": "https://iqbalmih.app.n8n.cloud/webhook/ai-agent",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Summarize & Extract": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Summarize & Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent - Summarize & Extract",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Summarize & Extract",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Summarize & Extract",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Article Content": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Summarize & Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "Scrape Article Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Row in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Summarize & Extract",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "615dea2c-7558-4506-89f1-8ef150049a5b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8fae81c4c6f0df134b5ef37bdff0504ee83067d044442031f1ac3662e68c3f93"
+  },
+  "id": "vcMMrxJhOsLbk680",
+  "tags": []
+}
